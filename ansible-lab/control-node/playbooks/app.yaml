@@ -47,7 +47,28 @@
     - name: Gerar pacote da aplicação
       command: mvn -f /opt/notes/pom.xml package
       become_user: app
-    - name: Configurar serviço do systemd
+    - name: Registrar versao atual do pacote
+      shell:
+        cmd: mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | grep -v '\['
+        chdir: /opt/notes/
+      register: app_version
+    - name: Configurar serviço do Systemd
       template:
         src: etc/systemd/system/notes.service
         dest: /etc/systemd/system/notes.service
+      notify: reload daemon
+    - name: Iniciar serviço notes
+      service:
+        name: notes
+        state: restarted
+  roles:
+      - configuracao-default-so
+  handlers:
+    - name: reload app
+      systemd:
+        state: restarted
+        daemon_reload: yes 
+        name: 'notes'
+    - name: reload daemon
+      systemd:
+        daemon_reexec: yes
